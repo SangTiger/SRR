@@ -12,53 +12,55 @@ export async function fetchNotionDatabase() {
 
   const response = await notion.databases.query({
     database_id: databaseId,
-    filter: {
-      property: '公開',
-      checkbox: { equals: true },
-    },
-  } as Parameters<typeof notion.databases.query>[0])
+  })
 
   return response.results
 }
 
-// Map Notion page properties to reference_cards fields
-// Expects these properties in Notion DB:
-// - ブランド名 (title)
-// - カテゴリ (select)
-// - サマリー (rich_text)
-// - 説明 (rich_text)
-// - 売上成長率 (rich_text) - example metric
-// - 公開 (checkbox)
-// - 匿名 (checkbox)
+// SNS 캠페인 결과 관리 DB → reference_cards 매핑
+// 노션 필드: 계정(title), 플랫폼(select), 팔로워 수(number), 카테고리(multi_select),
+//           실행일(date), 게시물 URL(url), 비용/보수(number), 퀄리티(select), 메모(text), 컨택(checkbox)
 export function mapNotionPageToCard(page: any) {
   const props = page.properties
 
-  const getText = (prop: any) => {
-    if (!prop) return ''
-    if (prop.type === 'title') return prop.title?.[0]?.plain_text || ''
-    if (prop.type === 'rich_text') return prop.rich_text?.[0]?.plain_text || ''
-    if (prop.type === 'select') return prop.select?.name || ''
-    if (prop.type === 'checkbox') return prop.checkbox ?? false
-    return ''
-  }
+  const getTitle = (prop: any) => prop?.title?.[0]?.plain_text || ''
+  const getText = (prop: any) => prop?.rich_text?.[0]?.plain_text || ''
+  const getSelect = (prop: any) => prop?.select?.name || ''
+  const getMultiSelect = (prop: any) =>
+    prop?.multi_select?.map((o: any) => o.name).join(', ') || ''
+  const getNumber = (prop: any) => prop?.number ?? null
+  const getUrl = (prop: any) => prop?.url || ''
+  const getDate = (prop: any) => prop?.date?.start || ''
 
-  // Collect metrics: any number-type or formula props can be mapped
+  const account = getTitle(props['계정'])
+  const platform = getSelect(props['플랫폼'])
+  const followers = getNumber(props['팔로워 수'])
+  const category = getMultiSelect(props['카테고리']) || '기타'
+  const quality = getSelect(props['퀄리티'])
+  const cost = getNumber(props['비용/보수'])
+  const memo = getText(props['메모'])
+  const postUrl = getUrl(props['게시물 URL'])
+  const executedAt = getDate(props['실행일'])
+
   const metrics: Record<string, string> = {}
-  for (const [key, val] of Object.entries(props) as any[]) {
-    if (val.type === 'number' && val.number !== null) {
-      metrics[key] = String(val.number)
-    }
-  }
+  if (platform) metrics['플랫폼'] = platform
+  if (followers !== null) metrics['팔로워 수'] = String(followers)
+  if (cost !== null) metrics['비용/보수'] = `¥${cost.toLocaleString()}`
+  if (quality) metrics['퀄리티'] = quality
+  if (executedAt) metrics['실행일'] = executedAt
+  if (postUrl) metrics['게시물 URL'] = postUrl
+
+  const summary = [platform, followers ? `${followers.toLocaleString()}명` : ''].filter(Boolean).join(' · ')
 
   return {
     notion_page_id: page.id,
-    brand_name: getText(props['ブランド名']) || null,
-    category: getText(props['カテゴリ']) || '기타',
-    summary: getText(props['サマリー']),
-    description: getText(props['説明']),
-    metrics: Object.keys(metrics).length > 0 ? metrics : {},
+    brand_name: account || null,
+    category: category,
+    summary: summary || account,
+    description: memo,
+    metrics,
     image_urls: [] as string[],
-    is_public: Boolean(getText(props['公開'])),
-    is_anonymous: Boolean(getText(props['匿名'])),
+    is_public: true,
+    is_anonymous: false,
   }
 }

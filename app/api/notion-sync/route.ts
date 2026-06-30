@@ -5,7 +5,11 @@ import { fetchNotionDatabase, mapNotionPageToCard } from '@/lib/notion'
 export async function POST(request: Request) {
   // Verify request is from authenticated admin (bearer token = service role)
   const authHeader = request.headers.get('authorization')
-  if (authHeader !== `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`) {
+  const token = authHeader?.replace('Bearer ', '')
+  if (
+    token !== process.env.SUPABASE_SERVICE_ROLE_KEY &&
+    token !== process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  ) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
