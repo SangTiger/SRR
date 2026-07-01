@@ -174,7 +174,7 @@ export default function PublicShowcase({ initialCards }: Props) {
   ]
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(180deg,#eef2f8 0%,#e8f4fd 50%,#f0f8ff 100%)' }} style={{ fontFamily: "'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif" }}>
+    <div className="min-h-screen" style={{ background: '#ffffff', fontFamily: "'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif" }}>
 
       {/* Hero */}
       <header className="relative overflow-hidden pb-36 pt-20"
