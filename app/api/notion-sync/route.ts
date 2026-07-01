@@ -22,7 +22,10 @@ export async function POST(request: Request) {
     )
 
     let upserted = 0
+    let deleted = 0
     let errors = 0
+
+    const notionIds = pages.map((p) => p.id)
 
     for (const page of pages) {
       try {
@@ -45,7 +48,22 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ upserted, errors, total: pages.length })
+    // 노션에서 삭제된 항목 Supabase에서도 삭제
+    if (notionIds.length > 0) {
+      const { data: deleteResult, error: deleteError } = await supabase
+        .from('reference_cards')
+        .delete()
+        .not('notion_page_id', 'in', `(${notionIds.map((id) => `"${id}"`).join(',')})`)
+        .select()
+
+      if (deleteError) {
+        console.error('Delete error:', deleteError)
+      } else {
+        deleted = deleteResult?.length ?? 0
+      }
+    }
+
+    return NextResponse.json({ upserted, deleted, errors, total: pages.length })
   } catch (e) {
     console.error('Notion sync error:', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })

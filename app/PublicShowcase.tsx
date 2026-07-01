@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ReferenceCard } from '@/types'
-import Link from 'next/link'
 
 const PLATFORM_ICON: Record<string, string> = {
   Instagram: '📷',
@@ -120,9 +119,6 @@ export default function PublicShowcase({ initialCards }: Props) {
           >
             {syncing ? '동기화 중...' : '동기화'}
           </button>
-          <Link href="/admin" className="text-xs text-gray-400 hover:text-gray-600">
-            관리자
-          </Link>
         </div>
       </header>
 

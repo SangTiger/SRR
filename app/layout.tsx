@@ -5,13 +5,13 @@ import './globals.css'
 const geist = Geist({ subsets: ['latin'], variable: '--font-geist' })
 
 export const metadata: Metadata = {
-  title: 'Pointail レファレンス',
-  description: 'Pointailが支援してきたブランドの実績・レファレンス集',
+  title: 'SNS 캠페인 결과',
+  description: '스토어링크 SNS 캠페인 실적 레퍼런스',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ja" className={`${geist.variable} h-full antialiased`}>
+    <html lang="ko" className={`${geist.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   )
