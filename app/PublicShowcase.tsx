@@ -43,8 +43,10 @@ function getExecutedAt(card: ReferenceCard): string {
   return card.metrics?.['실행일'] || ''
 }
 function igEmbedUrl(url: string): string | null {
-  const m = (url || '').match(/\/(p|reel|tv)\/([A-Za-z0-9_-]+)/)
-  return m ? `https://www.instagram.com/${m[1]}/${m[2]}/embed` : null
+  const m = (url || '').match(/\/(p|reels?|tv)\/([A-Za-z0-9_-]+)/)
+  if (!m) return null
+  const type = m[1] === 'reels' ? 'reel' : m[1]
+  return `https://www.instagram.com/${type}/${m[2]}/embed`
 }
 function fmt(n: number): string {
   return n.toLocaleString('ko-KR')
@@ -145,7 +147,7 @@ export default function PublicShowcase({ initialCards }: Props) {
   }
 
   const platforms = useMemo(() => {
-    const fixed = ['Instagram', 'X (Twitter)', 'Lips', '@cosme', '기타']
+    const fixed = ['Instagram', 'X (Twitter)']
     const counts: Record<string, number> = {}
     for (const c of cards) counts[getPlatform(c)] = (counts[getPlatform(c)] || 0) + 1
     const sorted = fixed.sort((a, b) => (counts[b] || 0) - (counts[a] || 0))
@@ -196,10 +198,10 @@ export default function PublicShowcase({ initialCards }: Props) {
           {/* 메인 카피 */}
           <div className="max-w-2xl">
             <h1 className="text-4xl font-black text-slate-900 leading-tight tracking-tight">
-              실제 캠페인 결과로<br />
-              <span className="text-violet-600">신뢰를 증명합니다.</span>
+              검증된 인플루언서 레퍼런스로,<br />
+              <span className="text-blue-600">캠페인의 성과를 증명합니다.</span>
             </h1>
-            <p className="mt-4 text-slate-500 text-base leading-relaxed">
+            <p className="mt-4 text-slate-700 text-lg leading-relaxed font-semibold">
               스토어링크의 캠페인 성과를 정리했습니다.<br />
               퀄리티·규모·채널 다양성을 한눈에 확인하세요.
             </p>
@@ -227,7 +229,7 @@ export default function PublicShowcase({ initialCards }: Props) {
         {/* 필터 + 동기화 */}
         <div className="mb-5">
           <div className="flex items-center gap-3 mb-3">
-            <h2 className="text-2xl font-black text-slate-900">캠페인 레퍼런스</h2>
+            <h2 className="text-2xl font-black text-slate-900">SNS 캠페인 레퍼런스</h2>
             <span className="text-sm text-gray-400 font-semibold">· {filtered.length}건</span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -284,17 +286,18 @@ function CampaignCard({ card }: { card: ReferenceCard }) {
   return (
     <article className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-md hover:-translate-y-1 hover:shadow-xl transition-all flex flex-col">
       {/* 썸네일 */}
-      <div className="relative w-full overflow-hidden bg-gray-100" style={{ height: 280 }}>
+      <div className="relative w-full overflow-hidden bg-gray-900" style={{ height: 280 }}>
         {embedUrl ? (
           <iframe
             src={embedUrl}
             loading="lazy"
             scrolling="no"
+            {...(!postUrl.includes('/reel/') && { sandbox: 'allow-scripts allow-same-origin' })}
             className="absolute border-0"
             style={{ top: -90, left: '50%', transform: 'translateX(-50%)', width: '101%', minWidth: 326, height: 480 }}
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs text-center px-4 leading-relaxed">
+          <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs text-center px-4 leading-relaxed bg-gray-100">
             미리보기를 불러올 수 없습니다<br />게시물 보기로 확인하세요
           </div>
         )}
@@ -305,11 +308,7 @@ function CampaignCard({ card }: { card: ReferenceCard }) {
         <PlatformLogo platform={platform} />
         <div className="min-w-0">
           <div className="font-black text-slate-900 text-sm truncate">
-            {postUrl ? (
-              <a href={postUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">
-                {card.brand_name || '미설정'}
-              </a>
-            ) : (card.brand_name || '미설정')}
+            {card.brand_name || '미설정'}
           </div>
           <div className="text-xs font-bold mt-0.5" style={{ color: pf.color }}>{platform}</div>
         </div>
