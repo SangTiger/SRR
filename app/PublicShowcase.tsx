@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { ReferenceCard } from '@/types'
 import Link from 'next/link'
 
@@ -49,9 +50,34 @@ interface Props {
 }
 
 export default function PublicShowcase({ initialCards }: Props) {
+  const router = useRouter()
   const [selected, setSelected] = useState<ReferenceCard | null>(initialCards[0] ?? null)
   const [search, setSearch] = useState('')
   const [platformFilter, setPlatformFilter] = useState('전체')
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState<string | null>(null)
+
+  async function handleSync() {
+    setSyncing(true)
+    setSyncMsg(null)
+    try {
+      const res = await fetch('/api/notion-sync', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+        },
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Sync failed')
+      setSyncMsg(`${data.upserted}건 동기화 완료`)
+      router.refresh()
+    } catch (e) {
+      setSyncMsg('동기화 실패')
+    } finally {
+      setSyncing(false)
+      setTimeout(() => setSyncMsg(null), 3000)
+    }
+  }
 
   const platforms = useMemo(() => {
     const set = new Set(initialCards.map(getPlatform))
@@ -83,9 +109,21 @@ export default function PublicShowcase({ initialCards }: Props) {
             {initialCards.length}건
           </span>
         </div>
-        <Link href="/admin" className="text-xs text-gray-400 hover:text-gray-600">
-          관리자
-        </Link>
+        <div className="flex items-center gap-3">
+          {syncMsg && (
+            <span className="text-xs text-green-600">{syncMsg}</span>
+          )}
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="text-xs px-3 py-1.5 bg-slate-900 text-white rounded-lg hover:bg-slate-700 disabled:opacity-50 transition-colors"
+          >
+            {syncing ? '동기화 중...' : '동기화'}
+          </button>
+          <Link href="/admin" className="text-xs text-gray-400 hover:text-gray-600">
+            관리자
+          </Link>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
