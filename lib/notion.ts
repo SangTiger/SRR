@@ -23,7 +23,7 @@ export async function fetchNotionDatabase() {
 export function mapNotionPageToCard(page: any) {
   const props = page.properties
 
-  const getTitle = (prop: any) => prop?.title?.[0]?.plain_text || ''
+  const getTitle = (prop: any) => prop?.title?.map((t: any) => t.plain_text || '').join('') || ''
   const getText = (prop: any) => prop?.rich_text?.[0]?.plain_text || ''
   const getSelect = (prop: any) => prop?.select?.name || ''
   const getMultiSelect = (prop: any) =>
