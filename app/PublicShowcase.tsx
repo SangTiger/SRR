@@ -138,6 +138,39 @@ export default function PublicShowcase({ initialCards }: Props) {
       setSyncMsg(`${data.upserted}건 동기화 완료`)
       await fetchCards()
       router.refresh()
+
+      // Instagram 카드 좋아요/댓글 갱신
+      const supabase = createClient()
+      const { data: igCards } = await supabase
+        .from('reference_cards')
+        .select('*')
+        .eq('is_public', true)
+      const instagramCards = (igCards || []).filter(
+        (c: ReferenceCard) => c.metrics?.['플랫폼'] === 'Instagram' && c.metrics?.['게시물 URL']
+      )
+      for (const c of instagramCards) {
+        try {
+          const r = await fetch('/api/instagram-metrics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: c.metrics?.['게시물 URL'] }),
+          })
+          if (!r.ok) continue
+          const metrics = await r.json()
+          await supabase
+            .from('reference_cards')
+            .update({
+              metrics: {
+                ...c.metrics,
+                '좋아요': String(metrics.like_count),
+                '댓글': String(metrics.comments_count),
+              }
+            })
+            .eq('id', c.id)
+        } catch {}
+      }
+      await fetchCards()
+      setSyncMsg(`${data.upserted}건 동기화 + Instagram 지표 갱신 완료`)
     } catch {
       setSyncMsg('동기화 실패')
     } finally {
@@ -276,12 +309,32 @@ function CampaignCard({ card }: { card: ReferenceCard }) {
   const pf = PF[platform] || PF['기타']
   const followers = getFollowers(card)
   const qualityNum = getQualityNum(card)
-  const likes = getLikes(card)
-  const comments = getComments(card)
+  const [likes, setLikes] = useState(getLikes(card))
+  const [comments, setComments] = useState(getComments(card))
+  const [fetching, setFetching] = useState(false)
   const postUrl = getPostUrl(card)
   const cost = getCost(card)
   const executedAt = getExecutedAt(card)
   const embedUrl = igEmbedUrl(postUrl)
+
+  async function fetchMetrics() {
+    if (!postUrl || platform !== 'Instagram') return
+    setFetching(true)
+    try {
+      const res = await fetch('/api/instagram-metrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: postUrl }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setLikes(data.like_count)
+        setComments(data.comments_count)
+      }
+    } finally {
+      setFetching(false)
+    }
+  }
 
   return (
     <article className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-md hover:-translate-y-1 hover:shadow-xl transition-all flex flex-col">
@@ -324,6 +377,20 @@ function CampaignCard({ card }: { card: ReferenceCard }) {
           <div className="bg-gray-100 rounded-xl p-3">
             <div className="text-xs text-gray-500 font-semibold">팔로워</div>
             <div className="text-lg font-black mt-1 text-slate-900">{followers ? fmt(followers) : '-'}</div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-gray-100 rounded-xl px-3 py-2 flex items-center gap-2">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="#e1306c" stroke="#e1306c" strokeWidth="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span className="text-sm font-black text-slate-900">{likes ? fmt(likes) : '-'}</span>
+          </div>
+          <div className="bg-gray-100 rounded-xl px-3 py-2 flex items-center gap-2">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span className="text-sm font-black text-slate-900">{comments ? fmt(comments) : '-'}</span>
           </div>
         </div>
         {card.category && (
