@@ -135,42 +135,9 @@ export default function PublicShowcase({ initialCards }: Props) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Sync failed')
-      setSyncMsg(`${data.upserted}건 동기화 완료`)
+      setSyncMsg(`${data.upserted}건 동기화, Instagram ${data.ig_updated ?? 0}건 지표 갱신 완료`)
       await fetchCards()
       router.refresh()
-
-      // Instagram 카드 좋아요/댓글 갱신
-      const supabase = createClient()
-      const { data: igCards } = await supabase
-        .from('reference_cards')
-        .select('*')
-        .eq('is_public', true)
-      const instagramCards = (igCards || []).filter(
-        (c: ReferenceCard) => c.metrics?.['플랫폼'] === 'Instagram' && c.metrics?.['게시물 URL']
-      )
-      for (const c of instagramCards) {
-        try {
-          const r = await fetch('/api/instagram-metrics', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: c.metrics?.['게시물 URL'] }),
-          })
-          if (!r.ok) continue
-          const metrics = await r.json()
-          await supabase
-            .from('reference_cards')
-            .update({
-              metrics: {
-                ...c.metrics,
-                '좋아요': String(metrics.like_count),
-                '댓글': String(metrics.comments_count),
-              }
-            })
-            .eq('id', c.id)
-        } catch {}
-      }
-      await fetchCards()
-      setSyncMsg(`${data.upserted}건 동기화 + Instagram 지표 갱신 완료`)
     } catch {
       setSyncMsg('동기화 실패')
     } finally {
@@ -309,32 +276,12 @@ function CampaignCard({ card }: { card: ReferenceCard }) {
   const pf = PF[platform] || PF['기타']
   const followers = getFollowers(card)
   const qualityNum = getQualityNum(card)
-  const [likes, setLikes] = useState(getLikes(card))
-  const [comments, setComments] = useState(getComments(card))
-  const [fetching, setFetching] = useState(false)
+  const likes = getLikes(card)
+  const comments = getComments(card)
   const postUrl = getPostUrl(card)
   const cost = getCost(card)
   const executedAt = getExecutedAt(card)
   const embedUrl = igEmbedUrl(postUrl)
-
-  async function fetchMetrics() {
-    if (!postUrl || platform !== 'Instagram') return
-    setFetching(true)
-    try {
-      const res = await fetch('/api/instagram-metrics', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: postUrl }),
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setLikes(data.like_count)
-        setComments(data.comments_count)
-      }
-    } finally {
-      setFetching(false)
-    }
-  }
 
   return (
     <article className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-md hover:-translate-y-1 hover:shadow-xl transition-all flex flex-col">
